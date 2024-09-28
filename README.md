@@ -15,6 +15,8 @@ Clone this repository, then run this commands inside the cloned folder
 
 3. The output declarations will be inside the `out` folder. Use them according to your needs, for a simple way of integration just create a folder called types (or whatever) on your project and place the lua files there,
 
+If you just want the definition files they are in the [Releases](https://github.com/elMuso/solar2d-definitions/releases)
+
 ### Thanks
 
 A huge thanks to andrei18 for making a base project for this one https://forums.solar2d.com/t/zerobrane-studio-corona-api-2020-3606/351996/4´
