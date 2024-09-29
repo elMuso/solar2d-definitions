@@ -1,4 +1,5 @@
 local API = {}
+local config = require("config")
 local parser = require("parser")
 local serpent = require('serpent')
 local generator = require('generator')
@@ -27,6 +28,23 @@ local function processApiDir(list, category, pck)
         local package = pck
         local name = GetLastPathItem(path)
         local isFile = name:find("%.markdown")
+        local pch = pck
+        if pch == nil then
+            pch = parser.beforeComma(name)
+        end
+        if name:match("event") then
+            category = "library"
+            pch = "event"
+        end
+        if pch ~= nil then
+            for _, value in ipairs(config.excluded_folders) do
+                --     print(name)
+
+                if value == category .. "_" .. pch then
+                    goto skip_to_next
+                end
+            end
+        end
 
         if package == nil then
             local lp = parser.parseSingleFile(category, name, API)
@@ -46,6 +64,7 @@ local function processApiDir(list, category, pck)
             API[name] = { type = "", description = '', childs = {}, category = category }
             processApiDir(lsat, category, name)
         end
+        ::skip_to_next::
     end
 end
 local function dirLookup(dir, subdirs)

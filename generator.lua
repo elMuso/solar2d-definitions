@@ -119,11 +119,12 @@ local function genLuaOverloads(method, funcName, returnval)
 end
 
 ---With some magic, generate functions for lualsp
+---@param category string
 ---@param key string
 ---@param cname string
 ---@param value ExtractedData
 ---@return string
-local function generateLua(key, cname, value)
+local function generateLua(category, key, cname, value)
     if value.type == "function" then
         local sstr = "---" .. value.docs
         ---@param method ExtractedMethod
@@ -133,9 +134,19 @@ local function generateLua(key, cname, value)
                 funcName = key .. "." .. funcName
             end
 
-            sstr = sstr ..
-                genLuaDocs(method, funcName, value.returnv) .. genLuaOverloads(method, funcName, value.returnv)
-            sstr = sstr .. "function " .. funcName .. "(" .. genLuaParams(method, funcName) .. ") end\n\n"
+            sstr = sstr .. genLuaDocs(method, funcName, value.returnv)
+            if category == "type" then
+                sstr = sstr .. "---@param self any\n"
+            end
+            sstr = sstr .. genLuaOverloads(method, funcName, value.returnv)
+            sstr = sstr .. "function " .. funcName .. "("
+            if category == "type" then
+                sstr = sstr .. "self"
+                if #method.arguments > 0 then
+                    sstr = sstr .. ", "
+                end
+            end
+            sstr = sstr .. genLuaParams(method, funcName) .. ") end\n\n"
         end
         return sstr
     end
@@ -143,13 +154,22 @@ local function generateLua(key, cname, value)
 end
 
 ---Generates classes for luaLsp
-local function generateLuaClass(name, args, inherits)
+---@param category string
+---@param name string
+---@param args any
+---@param inherits string|nil
+---@return unknown
+local function generateLuaClass(category, name, args, inherits)
     local o = "---@class " .. name .. "\n"
     if inherits ~= nil then o = "---@class " .. name .. ": " .. translateLuaType(inherits) .. "\n" end
     for cname, cvalue in pairs(args) do
         if cvalue.type ~= "function" then
             o = o .. "---@field " .. cname .. " " .. translateLuaType(cvalue.type) .. "\n"
         end
+    end
+
+    if category == "type" or config.imported_libraries[name] ~= nil then
+        return o .. "local " .. name .. " = {}\n\n"
     end
     return o .. name .. " = {}\n\n"
 end
@@ -159,26 +179,29 @@ end
 function generator.lua(input)
     for key, value in pairs(input) do
         local generate = true
-        local outpath = "out/" .. value.category .. "_" .. key .. ".lua"
+        local filename = key
+        if value.category == "type" then
+            filename = value.category .. "_" .. key
+        end
+        local outpath = "out/" .. filename .. ".lua"
         local o = "---@meta\n\n"
         if value.overview ~= nil and config.generate_class_docs then
             o = o .. "---" .. value.overview .. "\n"
         end
-        o = o .. generateLuaClass(key, value.childs, value.inherits)
+        o = o .. generateLuaClass(value.category, key, value.childs, value.inherits)
         for cname, cvalue in pairs(value.childs) do
-            o = o .. generateLua(key, cname, cvalue)
+            o = o .. generateLua(value.category, key, cname, cvalue)
         end
-        for _, fold in pairs(config.exluded_folders) do
-            if outpath:match(fold) then
-                generate = false
-            end
+
+        if config.imported_libraries[key] ~= nil then
+            o = o .. "return " .. key .. "\n"
         end
-        if generate then
-            local file2 = io.open(outpath, "w")
-            if file2 then
-                file2:write(o)
-                file2:close()
-            end
+
+
+        local file2 = io.open(outpath, "w")
+        if file2 then
+            file2:write(o)
+            file2:close()
         end
     end
 end

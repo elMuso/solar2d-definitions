@@ -63,7 +63,7 @@ function GetLastPathItem(str)
     if lastSlashIndex == -1 then
         return ""
     end
-    return string.sub(str, lastSlashIndex + 1)
+    return string.sub(str, lastSlashIndex + 1) --[[@as string]]
 end
 
 local function extractInfo(filename)
@@ -100,7 +100,7 @@ local function startswith(s, piece)
 end
 
 ---utility func
-local function beforeComma(line)
+function parser.beforeComma(line)
     for i = 1, line:len() do
         if line:sub(i, i) == '.' then
             return line:sub(1, i - 1)
@@ -159,7 +159,7 @@ end
 local function extractStringBetweenBrackets(str)
     local start, stop = string.find(str, "%[(.-)%]")
     if start and stop then
-        return string.sub(str, start + 1, stop - 1)
+        return string.sub(str, start + 1, stop - 1) --[[@as string]]
     else
         return ""
     end
@@ -169,12 +169,12 @@ end
 ---@return string
 local function cleanTitle(str)
     ---@type string
-    local p = string.gsub(str, " ~%^%(required%)%^~", "")
-    p = string.gsub(p, " ~%^%(optional%)%^~", "")
-    p = string.gsub(p, "%[...%]", "...")
-    p = string.gsub(p, "%[", "")
-    p = string.gsub(p, "%]", "")
-    p = string.gsub(p, " ", "")
+    local p = string.gsub(str, " ~%^%(required%)%^~", "") --[[@as string]]
+    p = string.gsub(p, " ~%^%(optional%)%^~", "") --[[@as string]]
+    p = string.gsub(p, "%[...%]", "...") --[[@as string]]
+    p = string.gsub(p, "%[", "") --[[@as string]]
+    p = string.gsub(p, "%]", "") --[[@as string]]
+    p = string.gsub(p, " ", "") --[[@as string]]
     return p
 end
 
@@ -186,8 +186,8 @@ local function extractArgumentDocs(input)
         return ""
     end
     local pattern = "_%b[]%b[]%._ "
-    local s = string.gsub(input, "\n", "")
-    s = string.gsub(s, pattern, "")
+    local s = string.gsub(input, "\n", "") --[[@as string]]
+    s = string.gsub(s, pattern, "") --[[@as string]]
     return s
 end
 
@@ -282,7 +282,7 @@ end
 ---@param buffer table
 function parser.parseFile(path, name, buffer)
     local data = extractTypeArgsReturns(path)
-    buffer.childs[beforeComma(name)] = data
+    buffer.childs[parser.beforeComma(name)] = data
 end
 
 ---comment
@@ -291,7 +291,8 @@ end
 ---@param api table
 ---@return string
 function parser.parseSingleFile(category, name, api)
-    local package = beforeComma(name)
+    local package = parser.beforeComma(name)
+
     if api[package] == nil then
         api[package] = { type = "", description = '', childs = {}, category = category }
     end
