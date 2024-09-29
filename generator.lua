@@ -90,7 +90,7 @@ local function generateLuaClass(name, args, inherits)
             o = o .. "---@field " .. cname .. " " .. translateLuaType(cvalue.type) .. "\n"
         end
     end
-    return o .. "local " .. name .. " = {}\n\n"
+    return o .. name .. " = {}\n\n"
 end
 
 ---Generates lua anotations based on a lua table API
