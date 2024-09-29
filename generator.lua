@@ -28,18 +28,32 @@ end
 
 ---Generates a nice lualsp header for each function, class, etc
 ---@param input ExtractedMethod
+---@param funcName string
 ---@param returnvalue string | nil
 ---@return string
-local function genLuaDocs(input, returnvalue)
+local function genLuaDocs(input, funcName, returnvalue)
     local o = ""
-
-    for _, value in ipairs(input.arguments) do
-        o = o .. "--- @param " .. value.name .. " " .. translateLuaType(value.type) .. " "
-        if value.optional == true then
-            o = o .. "| nil "
+    local className = config.single_argument_functions[funcName]
+    if className ~= nil then
+        o = o .. "---@class " .. className .. "\n"
+        for _, value in ipairs(input.arguments) do
+            o = o .. "--- @field " .. value.name .. " " .. translateLuaType(value.type)
+            if value.optional == true then
+                o = o .. "?"
+            end
+            o = o .. " " .. value.docs .. "\n"
         end
-        o = o .. value.docs .. "\n"
+        o = o .. "\n\n--- @param " .. className .. " " .. className .. "\n"
+    else
+        for _, value in ipairs(input.arguments) do
+            o = o .. "--- @param " .. value.name .. " " .. translateLuaType(value.type)
+            if value.optional == true then
+                o = o .. "?"
+            end
+            o = o .. " " .. value.docs .. "\n"
+        end
     end
+
     if returnvalue then
         o = o .. "--- @returns " .. translateLuaType(returnvalue) .. "\n"
     end
@@ -48,16 +62,60 @@ end
 
 ---Generates everything that will go inside (this,type,ofparams) to match the docs
 ---@param input ExtractedMethod
+---@param funcName string
 ---@return string
-local function genLuaParams(input)
+local function genLuaParams(input, funcName)
     local o = ""
-    for i, value in ipairs(input.arguments) do
-        if i ~= 1 then
-            o = o .. ", "
+    local className = config.single_argument_functions[funcName]
+    if className ~= nil then
+        o = className
+    else
+        for i, value in ipairs(input.arguments) do
+            if i ~= 1 then
+                o = o .. ", "
+            end
+            o = o .. value.name
         end
-        o = o .. value.name
     end
+
     return o
+end
+
+
+---@param method ExtractedMethod
+---@param funcName string
+---@param returnval string|any
+---@return string
+local function genLuaOverloads(method, funcName, returnval)
+    local needsOverload = false
+    local prevOptional = false
+    -- For quick checking for overloads
+    ---@param arg ExtractedArg
+    for _, arg in ipairs(method.arguments) do
+        -- If there is a non optional argument after an optional one
+        if prevOptional and arg.optional == false then
+            needsOverload = true
+        end
+        prevOptional = arg.optional
+    end
+
+    local out = ""
+
+    if config.custom_overloads[funcName] ~= nil then
+        for _, overload in ipairs(config.custom_overloads[funcName]) do
+            out = out .. "---@overload fun " .. overload
+            if returnval then
+                out = out .. ":" .. translateLuaType(returnval)
+            end
+            out = out .. "\n"
+        end
+    else
+        if needsOverload and config.single_argument_functions[funcName] == nil then
+            print("A function has been detected that Needs overloading:")
+            print(funcName)
+        end
+    end
+    return out
 end
 
 ---With some magic, generate functions for lualsp
@@ -70,11 +128,14 @@ local function generateLua(key, cname, value)
         local sstr = "---" .. value.docs
         ---@param method ExtractedMethod
         for _, method in ipairs(value.methods) do
-            sstr = sstr .. genLuaDocs(method, value.returnv) .. "function "
+            local funcName = cname
             if key ~= "global" then
-                sstr = sstr .. key .. "."
+                funcName = key .. "." .. funcName
             end
-            sstr = sstr .. cname .. "(" .. genLuaParams(method) .. ") end\n\n"
+
+            sstr = sstr ..
+                genLuaDocs(method, funcName, value.returnv) .. genLuaOverloads(method, funcName, value.returnv)
+            sstr = sstr .. "function " .. funcName .. "(" .. genLuaParams(method, funcName) .. ") end\n\n"
         end
         return sstr
     end
