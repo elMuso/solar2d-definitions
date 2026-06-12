@@ -5,11 +5,15 @@ local serpent = require('serpent')
 local generator = require('generator')
 -- local lfs = require("lfs")
 local DIR_SEP = '/'
+local IS_WINDOWS = package.config:sub(1, 1) == '\\'
 
 
 local function getFileList(path)
     local i, t, popen = 0, {}, io.popen
-    for filename in popen('dir "' .. path .. '" /b'):lines() do
+    local cmd = IS_WINDOWS
+        and ('dir "' .. path .. '" /b')
+        or ('ls -1 "' .. path .. '"')
+    for filename in popen(cmd):lines() do
         i = i + 1
         t[i] = path .. DIR_SEP .. filename
     end

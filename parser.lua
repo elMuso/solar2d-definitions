@@ -73,6 +73,12 @@ local function extractInfo(filename)
     local inOverview = false
     local f = io.open(filename, 'r')
     if f == nil then return end
+    -- On Windows io.open fails on a directory, but on Unix it succeeds and only
+    -- f:lines() errors with "Is a directory". Detect that case and bail out.
+    if f:read(0) == nil then
+        f:close()
+        return
+    end
     for l in f:lines() do
         i = i + 1
         if l:find("^> __Parent__") then
